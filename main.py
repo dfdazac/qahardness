@@ -102,7 +102,7 @@ def compute_jaccard_similarity(query_mappings, system_A, system_B, query_structu
 
 for s in query_structures:
     s_at_k = []
-    k_values = (1, 3, 10, 20, 50)
+    k_values = range(1, 50, 5)
     for k in k_values:
         similarity = compute_jaccard_similarity(query_mappings, 'QTO', 'CQD', s, k)
         print(s, k, f"{similarity:.3f}")
