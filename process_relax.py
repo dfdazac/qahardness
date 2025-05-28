@@ -5,7 +5,9 @@ import torch
 
 query_structures = ["1p", "2p", "3p", "2i", "3i", "ip", "pi"]
 
-cr_path = os.path.join("answers", "relax")
+MODEL_NAME = "cone"
+
+cr_path = os.path.join("answers", MODEL_NAME)
 for dataset in os.listdir(cr_path):
     dataset_path = os.path.join(cr_path, dataset)
     print(f"Loading {dataset}...")
@@ -17,14 +19,15 @@ for dataset in os.listdir(cr_path):
         hard_answers = p.load(f)
 
     for structure in query_structures:
-        query_file = os.path.join(dataset_path, structure, "CombinedRanker_scores.pkl")
+        query_file = os.path.join(dataset_path, structure, f"{MODEL_NAME}_scores.pkl")
 
         with open(query_file, "rb") as f:
             query_scores = p.load(f)
 
         query_answer_ranks = dict()
         for query, scores in tqdm(query_scores.items(), desc=f"Processing {structure}", mininterval=1.0):
-            scores = scores[0]
+            if len(scores) == 1:
+                scores = scores[0]
             easy = list(easy_answers[query])
             hard = list(hard_answers[query])
             num_easy = len(easy)

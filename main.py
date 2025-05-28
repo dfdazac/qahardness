@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 
 # Define the base directories
 methods = {
-    "relax"
+    "relax",
+    "qto"
 }
 
 # Define query structures of interest
@@ -72,12 +73,12 @@ def compute_jaccard_similarity(results_A, results_B, k):
 
 
 dataset = "FB15k237+H"
-k_values = range(1, 50, 5)
+k_values = range(1, 100, 5)
 for s in query_structures:
     sim_at_k = []
 
     file_A = query_ranks["relax"][dataset][s]
-    file_B = query_ranks["relax"][dataset][s]
+    file_B = query_ranks["qto"][dataset][s]
 
     with open(file_A, 'rb') as f:
         results_A = p.load(f)
