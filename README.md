@@ -1,68 +1,28 @@
-`main.py` and `process_cone.py` assume the following directory structure:
+`main.py` assumes query answer scores are stored in `answers`. Here an example of the structure expected for QTO: 
 
 
 ```
-ConE Answers
-├── ConE_FB15k237+H_answers
-│   ├── 1p.pkl
-│   ├── 2i.pkl
-│   ├── 2p.pkl
-│   ├── 3i.pkl
-│   ├── 3p.pkl
-│   ├── ip.pkl
-│   └── pi.pkl
-├── ConE_ICEWS18+H_answers
-│   ├── 1p.pkl
-│   ├── 2i.pkl
-│   ├── 2p.pkl
-│   ├── 3i.pkl
-│   ├── 3p.pkl
-│   ├── ip.pkl
-│   └── pi.pkl
-└── ConE_NELL995+H_answers
-    ├── 1p.pkl
-    ├── 2i.pkl
-    ├── 2p.pkl
-    ├── 3i.pkl
-    ├── 3p.pkl
-    ├── ip.pkl
-    └── pi.pkl
-CQD Answers
-└── CQD_FB15k237+H_answers
-    ├── 1hop
-    │   └── rank_dict.pkl
-    ├── 1hop-2i
-    │   └── rank_dict.pkl
+answers/qto
+└── FB15k237+H
     ├── 1p
-    │   └── rank_dict.pkl
-    ├── 2hop
-    │   ├── rank_dict.pkl
-    │   └── test.py
+    │   ├── qto_scores.pkl
+    │   └── query_answer_ranks.pkl
     ├── 2i
-    │   └── rank_dict.pkl
-    ├── 2i-1hop
-    │   └── rank_dict.pkl
+    │   ├── qto_scores.pkl
+    │   └── query_answer_ranks.pkl
     ├── 2p
-    │   └── rank_dict.pkl
-    ├── 3hop
-    │   └── rank_dict.pkl
+    │   ├── qto_scores.pkl
+    │   └── query_answer_ranks.pkl
     ├── 3i
-    │   └── rank_dict.pkl
+    │   ├── qto_scores.pkl
+    │   └── query_answer_ranks.pkl
     ├── 3p
-    │   └── rank_dict.pkl
+    │   ├── qto_scores.pkl
+    │   └── query_answer_ranks.pkl
     ├── ip
-    │   └── rank_dict.pkl
+    │   ├── qto_scores.pkl
+    │   └── query_answer_ranks.pkl
     └── pi
-        └── rank_dict.pkl
-QTO Answers
-└── QTO_FB15k237+H_answers
-    ├── all_metrics_test_none.txt
-    ├── average_metrics_test_none.txt
-    ├── rankings_test_1p.pkl
-    ├── rankings_test_2i.pkl
-    ├── rankings_test_2p.pkl
-    ├── rankings_test_3i.pkl
-    ├── rankings_test_3p.pkl
-    ├── rankings_test_ip.pkl
-    └── rankings_test_pi.pkl
+        ├── qto_scores.pkl
+        └── query_answer_ranks.pkl
 ```
