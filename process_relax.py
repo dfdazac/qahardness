@@ -2,6 +2,11 @@ import os
 import pickle as p
 from tqdm import tqdm
 import torch
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument("--input", choices=["scores", "unfiltered_ranks"], default="unfiltered_ranks", type=str)
+args = parser.parse_args()
 
 query_structures = ["1p", "2p", "3p", "2i", "3i", "ip", "pi"]
 
@@ -33,8 +38,11 @@ for dataset in os.listdir(cr_path):
             num_easy = len(easy)
             num_hard = len(hard)
 
-            sorted_ids = torch.argsort(torch.tensor(scores), descending=True)
-            rankings = torch.argsort(sorted_ids)
+            if args.input == "scores":
+                sorted_ids = torch.argsort(torch.tensor(scores), descending=True)
+                rankings = torch.argsort(sorted_ids)
+            elif args.input == "unfiltered_ranks":
+                rankings = torch.tensor(scores, dtype=torch.long)
 
             # Note order: first easy answers, then hard
             answer_ranks = rankings[easy + hard]

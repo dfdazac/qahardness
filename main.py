@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 # Define the base directories
 methods = {
     "relax",
-    "qto"
+    "qto",
+    "cone"
 }
 
 # Define query structures of interest
@@ -77,8 +78,8 @@ k_values = range(1, 100, 5)
 for s in query_structures:
     sim_at_k = []
 
-    file_A = query_ranks["relax"][dataset][s]
-    file_B = query_ranks["qto"][dataset][s]
+    file_A = query_ranks["qto"][dataset][s]
+    file_B = query_ranks["cone"][dataset][s]
 
     with open(file_A, 'rb') as f:
         results_A = p.load(f)
@@ -96,5 +97,6 @@ plt.legend()
 plt.title(f"Overlap@k")
 plt.xlabel('k')
 plt.ylabel('Jaccard similarity')
+plt.ylim(0, 1)
 plt.grid()
 plt.show()
