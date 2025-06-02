@@ -5,14 +5,15 @@ import torch
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
+parser.add_argument("--model", choices=["relax", "qto", "cone", "ultra"], required=True)
 parser.add_argument("--input", choices=["scores", "unfiltered_ranks"], default="unfiltered_ranks", type=str)
 args = parser.parse_args()
 
 query_structures = ["1p", "2p", "3p", "2i", "3i", "ip", "pi"]
 
-MODEL_NAME = "cone"
+model_name = args.model
 
-cr_path = os.path.join("answers", MODEL_NAME)
+cr_path = os.path.join("answers", model_name)
 for dataset in os.listdir(cr_path):
     dataset_path = os.path.join(cr_path, dataset)
     print(f"Loading {dataset}...")
@@ -24,7 +25,7 @@ for dataset in os.listdir(cr_path):
         hard_answers = p.load(f)
 
     for structure in query_structures:
-        query_file = os.path.join(dataset_path, structure, f"{MODEL_NAME}_scores.pkl")
+        query_file = os.path.join(dataset_path, structure, f"{model_name}_scores.pkl")
 
         with open(query_file, "rb") as f:
             query_scores = p.load(f)

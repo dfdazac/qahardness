@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 methods = {
     "relax",
     "qto",
-    "cone"
+    "cone",
+    "ultra"
 }
 
 # Define query structures of interest
@@ -78,8 +79,8 @@ k_values = range(1, 100, 5)
 for s in query_structures:
     sim_at_k = []
 
-    file_A = query_ranks["qto"][dataset][s]
-    file_B = query_ranks["cone"][dataset][s]
+    file_A = query_ranks["relax"][dataset][s]
+    file_B = query_ranks["ultra"][dataset][s]
 
     with open(file_A, 'rb') as f:
         results_A = p.load(f)
