@@ -57,56 +57,26 @@ def main(args):
         with open(scores_file_1, "rb") as f_1, open(scores_file_2, "rb") as f_2:
             query_scores_1 = p.load(f_1)
 
-            # query_scores_1_sample = {}
-            # for i, (k, v) in enumerate(query_scores_1.items()):
-            #     query_scores_1_sample[k] = v
-            #     if i == 100:
-            #         break
-            # query_scores_1 = query_scores_1_sample
+            if args.test:
+                query_scores_1_sample = {}
+                for i, (k, v) in enumerate(query_scores_1.items()):
+                    query_scores_1_sample[k] = v
+                    if i == 100:
+                        break
+                query_scores_1 = query_scores_1_sample
 
             query_scores_2 = p.load(f_2)
 
-            query_answer_ranks = dict()
             for query, scores_1 in tqdm(query_scores_1.items(), desc=f"Processing {structure}", mininterval=1.0):
                 if len(scores_1) == 1:
                     scores_1 = scores_1[0]
 
-                # min-max normalization for scores_1
-                scores_1 = torch.tensor(scores_1) - min(scores_1)
-                scores_1 = scores_1 / scores_1.max()
-
-                # scores_2
+                scores_1 = torch.tensor(scores_1)
                 scores_2 = torch.tensor(query_scores_2[query])
 
-                # Combine scores
-                if args.combination == "prod":
-                    scores = scores_1 * scores_2
-                elif args.combination == "min":
-                    scores = torch.minimum(scores_1, scores_2)
-                elif args.combination == "max":
-                    scores = torch.maximum(scores_1, scores_2)
-                elif args.combination == "lukasiewicz":
-                    scores = torch.clamp(scores_1 + scores_2 - 1.0, min=0.0)
-                elif args.combination == "nilpotent":
-                    scores = torch.where(scores_1 + scores_2 > 1, torch.minimum(scores_1, scores_2), torch.zeros_like(scores_1))
-                elif args.combination == "interpolation":
-                    scores = args.alpha * scores_1 + (1 - args.alpha) * scores_2
-                elif args.combination == "rank":
-                    ranks_1 = scores_1.argsort(descending=True).argsort().float()
-                    ranks_2 = scores_2.argsort(descending=True).argsort().float()
-                    scores = - (args.alpha * ranks_1 + (1.0 - args.alpha) * ranks_2)
-                elif args.combination == "oracle":
-                    pass
-                else:
-                    raise ValueError(f"Unknown combination {args.combination}")
-
-                if args.combination != "oracle":
-                    mrr = compute_mrr(scores, query, easy_answers, hard_answers)
-                    per_structure_mrr[structure].append(mrr)
-                else:
-                    mrr_1 = compute_mrr(scores_1, query, easy_answers, hard_answers)
-                    mrr_2 = compute_mrr(scores_2, query, easy_answers, hard_answers)
-                    per_structure_mrr[structure].append(max(mrr_1, mrr_2))
+                mrr_1 = compute_mrr(scores_1, query, easy_answers, hard_answers)
+                mrr_2 = compute_mrr(scores_2, query, easy_answers, hard_answers)
+                per_structure_mrr[structure].append(max(mrr_1, mrr_2))
 
     for structure in query_structures:
         print(f"MRR - {structure}: {torch.tensor(per_structure_mrr[structure]).mean().item():.4f}")
@@ -117,9 +87,6 @@ if __name__ == "__main__":
     parser.add_argument("--model_1", choices=["relax", "qto", "cone", "ultra"], default="relax")
     parser.add_argument("--model_2", choices=["relax", "qto", "cone", "ultra"], default="qto")
     parser.add_argument("--dataset", choices=["FB15k237+H"], default="FB15k237+H")
-    parser.add_argument("--combination",
-                        choices=["prod", "max", "min", "lukasiewicz", "nilpotent", "interpolation", "rank", "oracle"],
-                        default="oracle")
-    parser.add_argument("--alpha", type=float, default=0.5)
+    parser.add_argument("--test", action="store_true")
     args = parser.parse_args()
     main(args)
