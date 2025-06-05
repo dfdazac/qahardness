@@ -5,8 +5,10 @@ import torch
 from argparse import ArgumentParser
 from collections import defaultdict
 import pprint
-from scipy.stats import ttest_rel
+from scipy.stats import ttest_rel, sem, t
 from statsmodels.stats.multitest import multipletests
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def compute_mrr(scores, query, easy_answers, hard_answers):
@@ -90,33 +92,13 @@ def main(args):
         mean_mrr = torch.tensor(per_structure_mrr_combined[structure]).mean().item()
         print(f"MRR - {structure}: {mean_mrr:.4f}")
 
-    # Perform t-tests and Holm-Bonferroni correction
-    p_values = []
-    test_labels = []
-
-    for structure in query_structures:
-        mrr_1 = torch.tensor(per_structure_mrr_1[structure])
-        mrr_2 = torch.tensor(per_structure_mrr_2[structure])
-        mrr_combined = torch.tensor(per_structure_mrr_combined[structure])
-
-        # Only run t-test if lengths match (should always be true, but safe check)
-        if len(mrr_1) == len(mrr_combined):
-            _, p1 = ttest_rel(mrr_1, mrr_combined)
-            p_values.append(p1)
-            test_labels.append(f"{structure}: model_1 vs combined")
-
-        if len(mrr_2) == len(mrr_combined):
-            _, p2 = ttest_rel(mrr_2, mrr_combined)
-            p_values.append(p2)
-            test_labels.append(f"{structure}: model_2 vs combined")
-
-    # Holm–Bonferroni correction
-    reject, corrected_pvals, _, _ = multipletests(p_values, alpha=0.05, method='holm')
-
-    print("\nPaired t-tests with Holm–Bonferroni correction:")
-    for i, label in enumerate(test_labels):
-        sig = "✅" if reject[i] else "❌"
-        print(f"{label}: p = {p_values[i]:.4e}, corrected = {corrected_pvals[i]:.4e} {sig}")
+    # Store the MRR dictionaries to pickle files for later analysis
+    with open(f"per_structure_mrr_1_{dataset}_{model_name_1}.pkl", "wb") as f:
+        p.dump(dict(per_structure_mrr_1), f)
+    with open(f"per_structure_mrr_2_{dataset}_{model_name_2}.pkl", "wb") as f:
+        p.dump(dict(per_structure_mrr_2), f)
+    with open(f"per_structure_mrr_combined_{dataset}_{model_name_1}_{model_name_2}.pkl", "wb") as f:
+        p.dump(dict(per_structure_mrr_combined), f)
 
 
 if __name__ == "__main__":
