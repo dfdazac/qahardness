@@ -4,89 +4,122 @@ from tqdm import tqdm
 import torch
 from argparse import ArgumentParser
 from collections import defaultdict
+import pprint
 
-parser = ArgumentParser()
-parser.add_argument("--model_1", choices=["relax", "qto", "cone", "ultra"], default="relax")
-parser.add_argument("--model_2", choices=["relax", "qto", "cone", "ultra"], default="qto")
-parser.add_argument("--dataset", choices=["FB15k237+H"], default="FB15k237+H")
-parser.add_argument("--combination", choices=["prod", "max", "min"], default="max")
-args = parser.parse_args()
 
-# query_structures = ["1p", "2p", "3p", "2i", "3i", "ip", "pi"]
-query_structures = ["2p", "3p", "2i", "3i"]
+def compute_mrr(scores, query, easy_answers, hard_answers):
+    sorted_ids = torch.argsort(scores, descending=True)
+    rankings = torch.argsort(sorted_ids)
 
-model_name_1 = args.model_1
-model_name_2 = args.model_2
+    easy = list(easy_answers[query])
+    hard = list(hard_answers[query])
+    num_easy = len(easy)
+    num_hard = len(hard)
 
-dataset = args.dataset
-path_1 = os.path.join("answers", model_name_1)
-path_2 = os.path.join("answers", model_name_2)
-scores_path_1 = os.path.join(path_1, dataset)
-scores_path_2 = os.path.join(path_2, dataset)
+    # Note order: first easy answers, then hard
+    answer_ranks = rankings[easy + hard]
+    sorted_ranks, indices = torch.sort(answer_ranks)
 
-print(f"Loading {dataset}...")
-with open(os.path.join('data', dataset, 'test-easy-answers.pkl'), 'rb') as f:
-    easy_answers = p.load(f)
-with open(os.path.join('data', dataset, 'test-hard-answers.pkl'), 'rb') as f:
-    hard_answers = p.load(f)
+    answer_list = torch.arange(num_easy + num_hard, dtype=torch.long)
+    filtered_ranks = sorted_ranks - answer_list + 1
+    # Recover original order
+    filtered_ranks = filtered_ranks[indices.argsort()]
+    filtered_ranks = filtered_ranks[num_easy:]
 
-per_structure_mrr = defaultdict(list)
-for structure in query_structures:
-    scores_file_1 = os.path.join(scores_path_1, structure, f"{model_name_1}_scores.pkl")
-    scores_file_2 = os.path.join(scores_path_2, structure, f"{model_name_2}_scores.pkl")
+    mrr = torch.mean(1. / filtered_ranks).item()
+    return mrr
 
-    with open(scores_file_1, "rb") as f_1, open(scores_file_2, "rb") as f_2:
-        query_scores_1 = p.load(f_1)
-        query_scores_1_sample = {}
-        for i, (k, v) in enumerate(query_scores_1.items()):
-            query_scores_1_sample[k] = v
-            if i == 100:
-                break
-        query_scores_1 = query_scores_1_sample
-        query_scores_2 = p.load(f_2)
 
-    query_answer_ranks = dict()
-    for query, scores_1 in tqdm(query_scores_1.items(), desc=f"Processing {structure}", mininterval=1.0):
-        if len(scores_1) == 1:
-            scores_1 = scores_1[0]
+def main(args):
+    query_structures = ["1p", "2p", "3p", "2i", "3i", "ip", "pi"]
+    pprint.pprint(vars(args))
 
-        # min-max normalization for scores_1
-        scores_1 = torch.tensor(scores_1) - min(scores_1)
-        scores_1 = scores_1 / scores_1.max()
+    model_name_1 = args.model_1
+    model_name_2 = args.model_2
 
-        # scores_2
-        scores_2 = torch.tensor(query_scores_2[query])
+    dataset = args.dataset
+    path_1 = os.path.join("answers", model_name_1)
+    path_2 = os.path.join("answers", model_name_2)
+    scores_path_1 = os.path.join(path_1, dataset)
+    scores_path_2 = os.path.join(path_2, dataset)
 
-        # Combine scores
-        if args.combination == "prod":
-            scores = scores_1 * scores_2
-        elif args.combination == "min":
-            scores = torch.minimum(scores_1, scores_2)
-        elif args.combination == "max":
-            scores = torch.maximum(scores_1, scores_2)
-        else:
-            raise ValueError(f"Unknown combination {args.combination}")
+    print(f"Loading {dataset}...")
+    with open(os.path.join('data', dataset, 'test-easy-answers.pkl'), 'rb') as f:
+        easy_answers = p.load(f)
+    with open(os.path.join('data', dataset, 'test-hard-answers.pkl'), 'rb') as f:
+        hard_answers = p.load(f)
 
-        sorted_ids = torch.argsort(scores, descending=True)
-        rankings = torch.argsort(sorted_ids)
+    per_structure_mrr = defaultdict(list)
+    for structure in query_structures:
+        scores_file_1 = os.path.join(scores_path_1, structure, f"{model_name_1}_scores.pkl")
+        scores_file_2 = os.path.join(scores_path_2, structure, f"{model_name_2}_scores.pkl")
 
-        easy = list(easy_answers[query])
-        hard = list(hard_answers[query])
-        num_easy = len(easy)
-        num_hard = len(hard)
+        with open(scores_file_1, "rb") as f_1, open(scores_file_2, "rb") as f_2:
+            query_scores_1 = p.load(f_1)
 
-        # Note order: first easy answers, then hard
-        answer_ranks = rankings[easy + hard]
-        sorted_ranks, indices = torch.sort(answer_ranks)
+            # query_scores_1_sample = {}
+            # for i, (k, v) in enumerate(query_scores_1.items()):
+            #     query_scores_1_sample[k] = v
+            #     if i == 100:
+            #         break
+            # query_scores_1 = query_scores_1_sample
 
-        answer_list = torch.arange(num_easy + num_hard, dtype=torch.long)
-        filtered_ranks = sorted_ranks - answer_list + 1
-        # Recover original order
-        filtered_ranks = filtered_ranks[indices.argsort()]
-        filtered_ranks = filtered_ranks[num_easy:]
+            query_scores_2 = p.load(f_2)
 
-        mrr = torch.mean(1. / filtered_ranks).item()
-        per_structure_mrr[structure].append(mrr)
+            query_answer_ranks = dict()
+            for query, scores_1 in tqdm(query_scores_1.items(), desc=f"Processing {structure}", mininterval=1.0):
+                if len(scores_1) == 1:
+                    scores_1 = scores_1[0]
 
-for structure in query_structures:
-    print(f"MRR - {structure}: {torch.tensor(per_structure_mrr[structure]).mean().item():.4f}")
+                # min-max normalization for scores_1
+                scores_1 = torch.tensor(scores_1) - min(scores_1)
+                scores_1 = scores_1 / scores_1.max()
+
+                # scores_2
+                scores_2 = torch.tensor(query_scores_2[query])
+
+                # Combine scores
+                if args.combination == "prod":
+                    scores = scores_1 * scores_2
+                elif args.combination == "min":
+                    scores = torch.minimum(scores_1, scores_2)
+                elif args.combination == "max":
+                    scores = torch.maximum(scores_1, scores_2)
+                elif args.combination == "lukasiewicz":
+                    scores = torch.clamp(scores_1 + scores_2 - 1.0, min=0.0)
+                elif args.combination == "nilpotent":
+                    scores = torch.where(scores_1 + scores_2 > 1, torch.minimum(scores_1, scores_2), torch.zeros_like(scores_1))
+                elif args.combination == "interpolation":
+                    scores = args.alpha * scores_1 + (1 - args.alpha) * scores_2
+                elif args.combination == "rank":
+                    ranks_1 = scores_1.argsort(descending=True).argsort().float()
+                    ranks_2 = scores_2.argsort(descending=True).argsort().float()
+                    scores = - (args.alpha * ranks_1 + (1.0 - args.alpha) * ranks_2)
+                elif args.combination == "oracle":
+                    pass
+                else:
+                    raise ValueError(f"Unknown combination {args.combination}")
+
+                if args.combination != "oracle":
+                    mrr = compute_mrr(scores, query, easy_answers, hard_answers)
+                    per_structure_mrr[structure].append(mrr)
+                else:
+                    mrr_1 = compute_mrr(scores_1, query, easy_answers, hard_answers)
+                    mrr_2 = compute_mrr(scores_2, query, easy_answers, hard_answers)
+                    per_structure_mrr[structure].append(max(mrr_1, mrr_2))
+
+    for structure in query_structures:
+        print(f"MRR - {structure}: {torch.tensor(per_structure_mrr[structure]).mean().item():.4f}")
+
+
+if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("--model_1", choices=["relax", "qto", "cone", "ultra"], default="relax")
+    parser.add_argument("--model_2", choices=["relax", "qto", "cone", "ultra"], default="qto")
+    parser.add_argument("--dataset", choices=["FB15k237+H"], default="FB15k237+H")
+    parser.add_argument("--combination",
+                        choices=["prod", "max", "min", "lukasiewicz", "nilpotent", "interpolation", "rank", "oracle"],
+                        default="oracle")
+    parser.add_argument("--alpha", type=float, default=0.5)
+    args = parser.parse_args()
+    main(args)
