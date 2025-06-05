@@ -5,6 +5,8 @@ import torch
 from argparse import ArgumentParser
 from collections import defaultdict
 import pprint
+from scipy.stats import ttest_rel
+from statsmodels.stats.multitest import multipletests
 
 
 def compute_mrr(scores, query, easy_answers, hard_answers):
@@ -36,8 +38,8 @@ def main(args):
 
     model_name_1 = args.model_1
     model_name_2 = args.model_2
-
     dataset = args.dataset
+
     path_1 = os.path.join("answers", model_name_1)
     path_2 = os.path.join("answers", model_name_2)
     scores_path_1 = os.path.join(path_1, dataset)
@@ -49,7 +51,10 @@ def main(args):
     with open(os.path.join('data', dataset, 'test-hard-answers.pkl'), 'rb') as f:
         hard_answers = p.load(f)
 
-    per_structure_mrr = defaultdict(list)
+    per_structure_mrr_1 = defaultdict(list)
+    per_structure_mrr_2 = defaultdict(list)
+    per_structure_mrr_combined = defaultdict(list)
+
     for structure in query_structures:
         scores_file_1 = os.path.join(scores_path_1, structure, f"{model_name_1}_scores.pkl")
         scores_file_2 = os.path.join(scores_path_2, structure, f"{model_name_2}_scores.pkl")
@@ -76,10 +81,42 @@ def main(args):
 
                 mrr_1 = compute_mrr(scores_1, query, easy_answers, hard_answers)
                 mrr_2 = compute_mrr(scores_2, query, easy_answers, hard_answers)
-                per_structure_mrr[structure].append(max(mrr_1, mrr_2))
+                per_structure_mrr_1[structure].append(mrr_1)
+                per_structure_mrr_2[structure].append(mrr_2)
+                per_structure_mrr_combined[structure].append(max(mrr_1, mrr_2))
+
+    print("\nMean MRR per structure:")
+    for structure in query_structures:
+        mean_mrr = torch.tensor(per_structure_mrr_combined[structure]).mean().item()
+        print(f"MRR - {structure}: {mean_mrr:.4f}")
+
+    # Perform t-tests and Holm-Bonferroni correction
+    p_values = []
+    test_labels = []
 
     for structure in query_structures:
-        print(f"MRR - {structure}: {torch.tensor(per_structure_mrr[structure]).mean().item():.4f}")
+        mrr_1 = torch.tensor(per_structure_mrr_1[structure])
+        mrr_2 = torch.tensor(per_structure_mrr_2[structure])
+        mrr_combined = torch.tensor(per_structure_mrr_combined[structure])
+
+        # Only run t-test if lengths match (should always be true, but safe check)
+        if len(mrr_1) == len(mrr_combined):
+            _, p1 = ttest_rel(mrr_1, mrr_combined)
+            p_values.append(p1)
+            test_labels.append(f"{structure}: model_1 vs combined")
+
+        if len(mrr_2) == len(mrr_combined):
+            _, p2 = ttest_rel(mrr_2, mrr_combined)
+            p_values.append(p2)
+            test_labels.append(f"{structure}: model_2 vs combined")
+
+    # Holm–Bonferroni correction
+    reject, corrected_pvals, _, _ = multipletests(p_values, alpha=0.05, method='holm')
+
+    print("\nPaired t-tests with Holm–Bonferroni correction:")
+    for i, label in enumerate(test_labels):
+        sig = "✅" if reject[i] else "❌"
+        print(f"{label}: p = {p_values[i]:.4e}, corrected = {corrected_pvals[i]:.4e} {sig}")
 
 
 if __name__ == "__main__":
