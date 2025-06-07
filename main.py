@@ -3,14 +3,16 @@ import os.path as osp
 import pickle as p
 import numpy as np
 import matplotlib.pyplot as plt
+import itertools
 
 # Define the base directories
-methods = {
-    "relax",
-    "qto",
-    "cone",
-    "ultra"
-}
+methods_printnames = [
+    "RELAX",
+    "ULTRA",
+    "ConE",
+    "QTO"
+]
+methods = [m.lower() for m in methods_printnames]
 
 # Define query structures of interest
 query_structures = ["1p", "2p", "3p", "2i", "3i", "ip", "pi"]
@@ -74,30 +76,37 @@ def compute_jaccard_similarity(results_A, results_B, k):
     return np.mean(jaccard_similarities)
 
 
-dataset = "FB15k237+H"
+# --- Begin new plotting section ---
+num_methods = len(methods)
+fig, axes = plt.subplots(1, num_methods-1, figsize=(10, 3))
+
 k_values = range(1, 100, 5)
-for s in query_structures:
-    sim_at_k = []
+dataset = "FB15k237+H"
 
-    file_A = query_ranks["relax"][dataset][s]
-    file_B = query_ranks["ultra"][dataset][s]
+method_A = methods[0]
+for j, method_B in enumerate(methods[1:], start=1):
+    ax = axes[j-1]
+    all_sim_at_k = []
+    for s in query_structures:
+        file_A = query_ranks[method_A][dataset][s]
+        file_B = query_ranks[method_B][dataset][s]
+        with open(file_A, 'rb') as f:
+            results_A = p.load(f)
+        with open(file_B, 'rb') as f:
+            results_B = p.load(f)
+        sim_at_k = [compute_jaccard_similarity(results_A, results_B, k) for k in k_values]
+        all_sim_at_k.append(sim_at_k)
+        ax.plot(k_values, sim_at_k, label=s)
 
-    with open(file_A, 'rb') as f:
-        results_A = p.load(f)
+    mean_sim_at_k = np.mean(all_sim_at_k, axis=0)
+    ax.plot(k_values, mean_sim_at_k, label='avg', color='black', linestyle='--', linewidth=3, alpha=0.5)
+    ax.set_title(f"{methods_printnames[j] if methods_printnames[j] != 'ULTRA' else 'ULTRAQ'}")
+    ax.set_xlabel('k')
+    ax.set_ylim(0, 1)
+    ax.grid(True)
+    if j == num_methods-1:
+        ax.legend(loc='upper right', bbox_to_anchor=(1.4, 1))
 
-    with open(file_B, 'rb') as f:
-        results_B = p.load(f)
 
-    for k in k_values:
-        similarity = compute_jaccard_similarity(results_A, results_B, k)
-        sim_at_k.append(similarity)
-
-    plt.plot(k_values, sim_at_k, label=s)
-
-plt.legend()
-plt.title(f"Overlap@k")
-plt.xlabel('k')
-plt.ylabel('Jaccard similarity')
-plt.ylim(0, 1)
-plt.grid()
-plt.show()
+plt.tight_layout()
+plt.savefig("jaccard_similarity.pdf")

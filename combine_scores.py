@@ -5,10 +5,6 @@ import torch
 from argparse import ArgumentParser
 from collections import defaultdict
 import pprint
-from scipy.stats import ttest_rel, sem, t
-from statsmodels.stats.multitest import multipletests
-import matplotlib.pyplot as plt
-import numpy as np
 
 
 def compute_mrr(scores, query, easy_answers, hard_answers):
@@ -105,7 +101,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--model_1", choices=["relax", "qto", "cone", "ultra"], default="relax")
     parser.add_argument("--model_2", choices=["relax", "qto", "cone", "ultra"], default="qto")
-    parser.add_argument("--dataset", choices=["FB15k237+H"], default="FB15k237+H")
+    parser.add_argument("--dataset", choices=["FB15k237+H", "NELL995+H", "ICEWS18+H"], default="FB15k237+H")
     parser.add_argument("--test", action="store_true")
     args = parser.parse_args()
     main(args)

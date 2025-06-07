@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 
 parser = ArgumentParser()
 parser.add_argument("--model", choices=["relax", "qto", "cone", "ultra"], required=True)
-parser.add_argument("--input", choices=["scores", "unfiltered_ranks"], default="unfiltered_ranks", type=str)
+parser.add_argument("--input", choices=["scores", "unfiltered_ranks"], default="scores", type=str)
 args = parser.parse_args()
 
 query_structures = ["1p", "2p", "3p", "2i", "3i", "ip", "pi"]
